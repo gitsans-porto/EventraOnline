@@ -12,6 +12,9 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <!-- Uploadcare Widget -->
+    <script>
+      UPLOADCARE_PUBLIC_KEY = 'cd6ad820ebf1330505ae';
+    </script>
     <script src="https://ucarecdn.com/libs/widget/3.x/uploadcare.full.min.js"></script>
     <style>
         body { 
@@ -387,9 +390,6 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // --- UPLOADCARE WIDGET SETUP ---
-        const UPLOADCARE_PUBLIC_KEY = 'cd6ad820ebf1330505ae';
-
         // --- GLOBAL VARIABLES & STATE ---
         let adminAccessCode = 'admin-123';
         let pimpinanAccessCode = 'pimpinan-123';
@@ -404,6 +404,19 @@
         let localDivisionsCache = [];
 
         // --- INITIALIZATION ---
+        window.onload = function() {
+            if (typeof uploadcare !== 'undefined') {
+                 uploadcare.ready(function() {
+                    const widget = uploadcare.Widget('#proofUploader');
+                    
+                    widget.onUploadComplete(info => {
+                        uploadedFileInfo = info; // Save file info globally
+                        showNotification(`File "${info.name}" berhasil diunggah.`, "success");
+                    });
+                });
+            }
+        };
+        
         document.addEventListener('DOMContentLoaded', function() {
             const titleContainer = document.getElementById('loginTitle');
             const titleText = "Eventra";
@@ -464,26 +477,6 @@
                     }
                 }
             });
-
-            // Initialize Uploadcare widget after the DOM is ready
-            // The 'ready' function is the correct way to handle this according to docs
-            if (typeof uploadcare !== 'undefined') {
-                 uploadcare.ready(function() {
-                    const widget = uploadcare.Widget('#proofUploader', {
-                        publicKey: UPLOADCARE_PUBLIC_KEY,
-                        validators: [
-                            uploadcare.validators.fileType(['png', 'pdf']),
-                        ],
-                        imagesOnly: false,
-                        tabs: 'file url',
-                    });
-
-                    widget.onUploadComplete(info => {
-                        uploadedFileInfo = info; // Save file info globally
-                        showNotification(`File "${info.name}" berhasil diunggah.`, "success");
-                    });
-                });
-            }
         });
 
         // --- CORE TASK COMPLETION LOGIC (MODIFIED for UPLOADCARE) ---
