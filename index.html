@@ -419,9 +419,16 @@
                 widget.onChange(file => {
                     const submitBtn = document.getElementById('proofSubmitBtn');
                     if (file) {
-                        uploadedFileInfo = null;
+                        // When a file is selected, the upload starts automatically.
+                        // We disable the button and wait for onUploadComplete.
+                        uploadedFileInfo = null; 
                         submitBtn.disabled = true;
                         submitBtn.textContent = 'Mengunggah...';
+                    } else {
+                        // File was removed by the user.
+                        uploadedFileInfo = null;
+                        submitBtn.disabled = true;
+                        submitBtn.textContent = 'Pilih Berkas Dahulu';
                     }
                 });
             }
@@ -494,8 +501,10 @@
             currentTaskInfo = { eventId, subcommitteeId, taskId };
             document.getElementById("proofModal").classList.add("flex");
             document.getElementById("proofModal").classList.remove("hidden");
-            document.getElementById('proofSubmitBtn').disabled = true;
-            document.getElementById('proofSubmitBtn').textContent = 'Pilih Berkas Dahulu';
+            // Set initial state for the button
+            const submitBtn = document.getElementById('proofSubmitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Pilih Berkas Dahulu';
         }
 
         function closeProofModal() {
@@ -515,7 +524,7 @@
 
         async function submitProof() {
             if (!uploadedFileInfo) {
-                return showNotification("Mohon tunggu proses unggah berkas selesai.", "error");
+                return showNotification("Mohon tunggu proses unggah berkas selesai, atau pilih berkas terlebih dahulu.", "error");
             }
 
             const description = document.getElementById("proofDescription").value;
@@ -549,6 +558,59 @@
             
             showNotification("Bukti berhasil dikirim untuk verifikasi!", "success");
             closeProofModal();
+        }
+
+        async function openSubcommitteeDetailModal(eventId, subcommitteeId) {
+            const eventDoc = await db.collection("events").doc(eventId).get();
+            const eventData = eventDoc.data();
+            const subcommittee = eventData.subcommittees.find(sc => sc.id === subcommitteeId);
+            if (!subcommittee) return;
+
+            document.getElementById('committeeDetailTitle').textContent = `Detail Bidang: ${subcommittee.name}`;
+            const contentEl = document.getElementById('committeeDetailContent');
+
+            const getMemberName = (id) => localMembersCache.find(m => m.id === id)?.name || 'N/A';
+            const getMemberDivision = (id) => localMembersCache.find(m => m.id === id)?.division || 'N/A';
+
+            const membersList = subcommittee.memberIds && subcommittee.memberIds.length > 0
+                ? subcommittee.memberIds.map(id => `<li class="text-gray-700">${getMemberName(id)} <span class="text-gray-500">(${getMemberDivision(id)})</span></li>`).join('')
+                : '<li class="text-gray-500">Tidak ada anggota.</li>';
+
+            const tasksList = subcommittee.tasks && subcommittee.tasks.length > 0 ? subcommittee.tasks.map(t => {
+                const proofButton = ((t.status === 'completed' || t.status === 'pending-approval') && t.proofUrl)
+                    ? `<button onclick="openProofDetailModal('${eventId}', '${subcommittee.id}', '${t.id}')" class="mt-2 text-sm text-sky-600 hover:underline">Lihat Bukti</button>`
+                    : '';
+                return `
+                <div class="border-l-4 ${t.status === 'completed' ? 'border-green-500' : 'border-yellow-500'} pl-3 py-2 bg-white my-2 rounded-r-lg shadow-sm">
+                    <p class="font-medium">${t.name}</p>
+                    <p class="text-sm text-gray-500">Status: <span class="font-semibold ${t.status === 'completed' ? 'text-green-600' : 'text-yellow-600'}">${t.status === 'completed' ? 'Selesai' : 'Berjalan'}</span></p>
+                    <p class="text-sm text-red-500">Deadline: ${formatDate(t.deadline)}</p>
+                    ${proofButton}
+                </div>
+            `;
+            }).join('') : '<p class="text-gray-500 text-sm">Belum ada tugas untuk bidang ini.</p>';
+
+            contentEl.innerHTML = `
+                <div class="mb-4">
+                    <h4 class="font-bold text-lg text-gray-800">Ketua Bidang</h4>
+                    <p class="text-gray-700">${getMemberName(subcommittee.chairId)} <span class="text-gray-500">(${getMemberDivision(subcommittee.chairId)})</span></p>
+                </div>
+                <div class="mb-4">
+                    <h4 class="font-bold text-lg text-gray-800">Anggota Bidang</h4>
+                    <ul class="list-disc list-inside ml-2">${membersList}</ul>
+                </div>
+                <div>
+                    <h4 class="font-bold text-lg text-gray-800">Tugas Bidang</h4>
+                    <div class="space-y-1 mt-2 bg-gray-50 p-2 rounded-lg">${tasksList}</div>
+                </div>
+            `;
+            document.getElementById('committeeDetailModal').classList.remove('hidden');
+            document.getElementById('committeeDetailModal').classList.add('flex');
+        }
+
+        function closeCommitteeDetailModal() {
+            document.getElementById('committeeDetailModal').classList.add('hidden');
+            document.getElementById('committeeDetailModal').classList.remove('flex');
         }
 
         async function openProofDetailModal(eventId, subcommitteeId, taskId) {
