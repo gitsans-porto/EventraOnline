@@ -361,7 +361,6 @@
         </div>
     </div>
     
-    <!-- NEW: Edit Subcommittee Modal -->
     <div id="editSubcommitteeModal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50 p-4">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 flex flex-col" style="height: 90vh;">
             <div class="p-6 border-b">
@@ -400,7 +399,6 @@
         </div>
     </div>
     
-    <!-- NEW: Edit Task Modal -->
     <div id="editTaskModal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50 p-4">
         <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
             <h3 class="text-lg font-semibold text-gray-900 mb-4">Edit Tugas</h3>
@@ -1268,7 +1266,7 @@
         }
 
         async function getUnavailableMemberIds(options = {}) {
-            const { eventId, excludeSelfId, isEditing, currentChairId, currentMemberIds } = options;
+            const { eventId, excludeIds = [] } = options;
             if (!eventId) return [];
 
             const eventRef = db.collection("events").doc(eventId);
@@ -1277,49 +1275,21 @@
 
             if (eventDoc.exists) {
                 const eventData = eventDoc.data();
-                if (eventData.chairId && eventData.chairId !== excludeSelfId) {
+                if (eventData.chairId) {
                     unavailableIds.add(eventData.chairId);
                 }
                 if (eventData.subcommittees) {
                     eventData.subcommittees.forEach(sc => {
-                        if (sc.chairId && sc.chairId !== excludeSelfId) unavailableIds.add(sc.chairId);
-                        if (sc.memberIds) sc.memberIds.forEach(id => {
-                            if (id !== excludeSelfId) unavailableIds.add(id);
-                        });
+                        if (sc.chairId) unavailableIds.add(sc.chairId);
+                        if (sc.memberIds) sc.memberIds.forEach(id => unavailableIds.add(id));
                     });
                 }
             }
-
-            // For batch creation form
-            const allForms = document.querySelectorAll('.subcommittee-batch-form');
-            allForms.forEach(form => {
-                const chairId = form.querySelector('.batch-sc-chair-id').value;
-                if (chairId && chairId !== excludeSelfId) unavailableIds.add(chairId);
-
-                const memberTags = form.querySelectorAll('.tag');
-                memberTags.forEach(tag => {
-                    const memberId = tag.dataset.id;
-                    if(memberId && memberId !== excludeSelfId) unavailableIds.add(memberId);
-                });
-            });
-
-            // For single edit form
-             if (isEditing) {
-                const editChairId = document.querySelector('#editSubcommitteeChairContainer .tag')?.dataset.id;
-                if (editChairId && editChairId !== currentChairId) unavailableIds.add(editChairId);
-
-                const editMemberTags = document.querySelectorAll('#editSubcommitteeMembersContainer .tag');
-                editMemberTags.forEach(tag => {
-                    const memberId = tag.dataset.id;
-                    if (memberId && !currentMemberIds.includes(memberId)) {
-                        unavailableIds.add(memberId);
-                    }
-                });
-            }
-
+            
+            excludeIds.forEach(id => unavailableIds.delete(id));
+            
             return Array.from(unavailableIds);
         }
-
 
         function openBatchSubcommitteeModal() {
             batchFormCounter = 0;
@@ -1518,7 +1488,7 @@
             const eventRef = db.collection("events").doc(currentEventId);
             const eventDoc = await eventRef.get();
             const eventData = eventDoc.data();
-            const subcommittees = eventData.subcommittees.map(sc => {
+            const subcommittees = (eventData.subcommittees || []).map(sc => {
                 if (sc.id === subcommitteeId) {
                     if (!sc.tasks) sc.tasks = [];
                     sc.tasks.push(...newTasks);
@@ -1661,8 +1631,6 @@
         
         // --- NEW EDIT/DELETE FUNCTIONS ---
         async function openEditSubcommitteeModal(subcommitteeId) {
-            // This function will require a significant rewrite of the dropdown logic for editing context.
-            // For now, let's just open the modal with basic data.
             const eventDoc = await db.collection("events").doc(currentEventId).get();
             const eventData = eventDoc.data();
             const sc = eventData.subcommittees.find(s => s.id === subcommitteeId);
@@ -1671,15 +1639,23 @@
             document.getElementById('editSubcommitteeId').value = sc.id;
             document.getElementById('editSubcommitteeName').value = sc.name;
 
-            // Placeholder for chair and members - this needs the complex dropdown logic
+            const getMember = (id) => localMembersCache.find(m => m.id === id);
+
             const chairContainer = document.getElementById('editSubcommitteeChairContainer');
             const membersContainer = document.getElementById('editSubcommitteeMembersContainer');
-            const getMemberName = (id) => localMembersCache.find(m => m.id === id)?.name || 'N/A';
-            const getMemberDivision = (id) => localMembersCache.find(m => m.id === id)?.division || 'N/A';
 
-            chairContainer.innerHTML = `<div class="tag" data-id="${sc.chairId}">${getMemberName(sc.chairId)} <span class="font-normal opacity-75">(${getMemberDivision(sc.chairId)})</span></div>`;
-            membersContainer.innerHTML = sc.memberIds.map(id => `<div class="tag" data-id="${id}">${getMemberName(id)} <span class="font-normal opacity-75">(${getMemberDivision(id)})</span></div>`).join('');
+            const renderTag = (member) => `<div class="tag" data-id="${member.id}">${member.name} <span class="font-normal opacity-75">(${member.division})</span><span class="tag-remove" onclick="event.stopPropagation(); this.parentElement.remove();">×</span></div>`;
+            
+            const chairMember = getMember(sc.chairId);
+            chairContainer.innerHTML = chairMember ? `<div class="tag" data-id="${sc.chairId}">${chairMember.name} <span class="font-normal opacity-75">(${chairMember.division})</span><span class="tag-remove" onclick="event.stopPropagation(); setupEditSubcommitteeChairInput();">×</span></div>` : '';
 
+            membersContainer.innerHTML = sc.memberIds.map(id => {
+                const member = getMember(id);
+                return member ? renderTag(member) : '';
+            }).join('');
+            
+            setupEditSubcommitteeChairInput(true); // isInitialSetup = true
+            setupEditSubcommitteeMembersInput(true); // isInitialSetup = true
 
             document.getElementById('editSubcommitteeModal').classList.add('flex');
             document.getElementById('editSubcommitteeModal').classList.remove('hidden');
@@ -1692,8 +1668,32 @@
 
         async function handleEditSubcommitteeSubmit(e) {
             e.preventDefault();
-            // This is a simplified version. A full version would read tags from the UI.
-            showNotification("Fungsi edit belum diimplementasikan sepenuhnya.", "warning");
+            const subcommitteeId = document.getElementById('editSubcommitteeId').value;
+            const newName = document.getElementById('editSubcommitteeName').value;
+            
+            const chairTag = document.querySelector('#editSubcommitteeChairContainer .tag');
+            if (!chairTag) {
+                return showNotification("Ketua bidang harus dipilih.", "error");
+            }
+            const newChairId = chairTag.dataset.id;
+            
+            const memberTags = document.querySelectorAll('#editSubcommitteeMembersContainer .tag');
+            const newMemberIds = Array.from(memberTags).map(tag => tag.dataset.id);
+            
+            const eventRef = db.collection("events").doc(currentEventId);
+            const eventDoc = await eventRef.get();
+            const eventData = eventDoc.data();
+            
+            const updatedSubcommittees = eventData.subcommittees.map(sc => {
+                if (sc.id === subcommitteeId) {
+                    return { ...sc, name: newName, chairId: newChairId, memberIds: newMemberIds };
+                }
+                return sc;
+            });
+            
+            await eventRef.update({ subcommittees: updatedSubcommittees });
+            showNotification("Data bidang berhasil diperbarui.", "success");
+            closeEditSubcommitteeModal();
         }
 
         async function openEditTaskModal(subcommitteeId, taskId) {
@@ -1771,8 +1771,7 @@
                 showNotification("Tugas berhasil dihapus.", "success");
             });
         }
-
-
+        
         // --- UTILITY FUNCTIONS ---
         function showNotification(text, type = "success") {
             const el = document.getElementById("notificationContent");
