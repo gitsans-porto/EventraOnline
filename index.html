@@ -360,6 +360,71 @@
             </form>
         </div>
     </div>
+    
+    <!-- NEW: Edit Subcommittee Modal -->
+    <div id="editSubcommitteeModal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 flex flex-col" style="height: 90vh;">
+            <div class="p-6 border-b">
+                 <div class="flex justify-between items-center">
+                    <h2 class="text-xl font-bold text-gray-800">Edit Bidang</h2>
+                    <button onclick="closeEditSubcommitteeModal()" class="text-gray-400 hover:text-gray-700 text-2xl">&times;</button>
+                </div>
+            </div>
+            <form id="editSubcommitteeForm" class="flex-grow contents">
+                <input type="hidden" id="editSubcommitteeId">
+                <div class="p-6 modal-content overflow-y-auto space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama Bidang</label>
+                        <input type="text" id="editSubcommitteeName" class="w-full border border-gray-300 rounded-lg px-3 py-2" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Ketua Bidang</label>
+                        <div class="relative">
+                            <div id="editSubcommitteeChairContainer" class="w-full border border-gray-300 rounded-lg px-2 py-1 bg-white flex items-center min-h-[42px] cursor-text"></div>
+                            <div id="editSubcommitteeChairDropdown" class="dropdown-menu hidden mt-1"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Anggota Bidang</label>
+                        <div class="relative">
+                            <div id="editSubcommitteeMembersContainer" class="w-full border border-gray-300 rounded-lg px-2 py-1 bg-white flex flex-wrap items-center min-h-[42px] cursor-text"></div>
+                            <div id="editSubcommitteeMembersDropdown" class="dropdown-menu hidden mt-1"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6 border-t bg-gray-50 rounded-b-2xl flex space-x-3">
+                    <button type="button" onclick="closeEditSubcommitteeModal()" class="flex-1 w-full bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold text-lg hover:bg-gray-300 transition-all">Batal</button>
+                    <button type="submit" class="flex-1 w-full brand-gradient-bg text-white py-3 rounded-lg font-semibold text-lg hover:opacity-90 transition-all">Simpan Perubahan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- NEW: Edit Task Modal -->
+    <div id="editTaskModal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Edit Tugas</h3>
+            <form id="editTaskForm">
+                <input type="hidden" id="editTaskSubcommitteeId">
+                <input type="hidden" id="editTaskId">
+                <div class="space-y-4">
+                    <div>
+                        <label for="editTaskName" class="block text-sm font-medium text-gray-700">Nama Tugas</label>
+                        <input type="text" id="editTaskName" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2">
+                    </div>
+                    <div>
+                        <label for="editTaskDeadline" class="block text-sm font-medium text-gray-700">Deadline</label>
+                        <input type="date" id="editTaskDeadline" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2">
+                    </div>
+                </div>
+                <div class="flex space-x-3 mt-6">
+                    <button type="button" onclick="closeEditTaskModal()" class="flex-1 bg-gray-200 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-300">Batal</button>
+                    <button type="submit" class="flex-1 brand-gradient-bg text-white px-4 py-2.5 rounded-lg hover:opacity-90">Simpan Perubahan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50 p-4">
         <div class="bg-white rounded-xl p-6 max-w-sm w-full mx-4 text-center">
             <h3 id="confirmModalTitle" class="text-lg font-semibold text-gray-900 mb-2">Konfirmasi Aksi</h3>
@@ -419,13 +484,10 @@
                 widget.onChange(file => {
                     const submitBtn = document.getElementById('proofSubmitBtn');
                     if (file) {
-                        // When a file is selected, the upload starts automatically.
-                        // We disable the button and wait for onUploadComplete.
                         uploadedFileInfo = null; 
                         submitBtn.disabled = true;
                         submitBtn.textContent = 'Mengunggah...';
                     } else {
-                        // File was removed by the user.
                         uploadedFileInfo = null;
                         submitBtn.disabled = true;
                         submitBtn.textContent = 'Pilih Berkas Dahulu';
@@ -461,6 +523,8 @@
             document.getElementById('memberForm').addEventListener('submit', handleMemberFormSubmit);
             document.getElementById('createSubcommitteeBatchForm').addEventListener('submit', handleBatchSubcommitteeSubmit);
             document.getElementById('assignTaskToSubcommitteeForm').addEventListener('submit', assignTaskToSubcommittee);
+            document.getElementById('editSubcommitteeForm').addEventListener('submit', handleEditSubcommitteeSubmit);
+            document.getElementById('editTaskForm').addEventListener('submit', handleEditTaskSubmit);
             
             document.getElementById('confirmModalCancel').addEventListener('click', closeConfirmModal);
             document.getElementById('confirmModalConfirm').addEventListener('click', () => {
@@ -496,12 +560,11 @@
             });
         });
 
-        // --- CORE TASK COMPLETION LOGIC (MODIFIED for UPLOADCARE) ---
+        // --- CORE TASK COMPLETION LOGIC ---
         function completeTask(eventId, subcommitteeId, taskId) {
             currentTaskInfo = { eventId, subcommitteeId, taskId };
             document.getElementById("proofModal").classList.add("flex");
             document.getElementById("proofModal").classList.remove("hidden");
-            // Set initial state for the button
             const submitBtn = document.getElementById('proofSubmitBtn');
             submitBtn.disabled = true;
             submitBtn.textContent = 'Pilih Berkas Dahulu';
@@ -926,7 +989,7 @@
                 name: eventName,
                 date: eventDate,
                 chairId: chairId,
-                memberIds: localMembersCache.map(m => m.id)
+                memberIds: localMembersCache.map(m => m.id).filter(id => id !== chairId)
             };
             if (eventIdToEdit) {
                 db.collection("events").doc(eventIdToEdit).update(eventData)
@@ -1204,29 +1267,59 @@
             });
         }
 
-        async function getUnavailableMemberIds(excludeCounter = -1) {
-            const eventDoc = await db.collection("events").doc(currentEventId).get();
-            const eventData = eventDoc.data();
+        async function getUnavailableMemberIds(options = {}) {
+            const { eventId, excludeSelfId, isEditing, currentChairId, currentMemberIds } = options;
+            if (!eventId) return [];
+
+            const eventRef = db.collection("events").doc(eventId);
+            const eventDoc = await eventRef.get();
             const unavailableIds = new Set();
-            if (eventData.subcommittees) {
-                eventData.subcommittees.forEach(sc => {
-                    unavailableIds.add(sc.chairId);
-                    if(sc.memberIds) sc.memberIds.forEach(id => unavailableIds.add(id));
-                });
+
+            if (eventDoc.exists) {
+                const eventData = eventDoc.data();
+                if (eventData.chairId && eventData.chairId !== excludeSelfId) {
+                    unavailableIds.add(eventData.chairId);
+                }
+                if (eventData.subcommittees) {
+                    eventData.subcommittees.forEach(sc => {
+                        if (sc.chairId && sc.chairId !== excludeSelfId) unavailableIds.add(sc.chairId);
+                        if (sc.memberIds) sc.memberIds.forEach(id => {
+                            if (id !== excludeSelfId) unavailableIds.add(id);
+                        });
+                    });
+                }
             }
+
+            // For batch creation form
             const allForms = document.querySelectorAll('.subcommittee-batch-form');
             allForms.forEach(form => {
-                const counter = parseInt(form.id.split('-').pop());
-                if (counter === excludeCounter) return;
                 const chairId = form.querySelector('.batch-sc-chair-id').value;
-                if (chairId) unavailableIds.add(chairId);
-                const memberTags = form.querySelectorAll('[id^="batch-members-container"] .tag');
+                if (chairId && chairId !== excludeSelfId) unavailableIds.add(chairId);
+
+                const memberTags = form.querySelectorAll('.tag');
                 memberTags.forEach(tag => {
-                    unavailableIds.add(tag.dataset.id);
+                    const memberId = tag.dataset.id;
+                    if(memberId && memberId !== excludeSelfId) unavailableIds.add(memberId);
                 });
             });
+
+            // For single edit form
+             if (isEditing) {
+                const editChairId = document.querySelector('#editSubcommitteeChairContainer .tag')?.dataset.id;
+                if (editChairId && editChairId !== currentChairId) unavailableIds.add(editChairId);
+
+                const editMemberTags = document.querySelectorAll('#editSubcommitteeMembersContainer .tag');
+                editMemberTags.forEach(tag => {
+                    const memberId = tag.dataset.id;
+                    if (memberId && !currentMemberIds.includes(memberId)) {
+                        unavailableIds.add(memberId);
+                    }
+                });
+            }
+
             return Array.from(unavailableIds);
         }
+
 
         function openBatchSubcommitteeModal() {
             batchFormCounter = 0;
@@ -1294,7 +1387,7 @@
         }
 
         async function populateBatchChairDropdown(counter, searchTerm = '') {
-            const unavailableIds = await getUnavailableMemberIds(counter);
+            const unavailableIds = await getUnavailableMemberIds({ eventId: currentEventId });
             const dropdown = document.getElementById(`batch-chair-dropdown-${counter}`);
             const filteredMembers = localMembersCache.filter(m => 
                 !unavailableIds.includes(m.id) &&
@@ -1302,7 +1395,7 @@
             );
             dropdown.innerHTML = filteredMembers.map(member => 
                 `<div class="px-4 py-2 hover:bg-gray-100 cursor-pointer" onclick="selectBatchChair('${member.id}', ${counter})">${member.name} <span class="text-gray-400 text-xs">(${member.division})</span></div>`
-            ).join('');
+            ).join('') || `<div class="px-4 py-2 text-gray-500">Tidak ada anggota tersedia</div>`;
             dropdown.classList.remove('hidden');
         }
 
@@ -1311,24 +1404,21 @@
             if (!member) return;
             const container = document.getElementById(`batch-chair-container-${counter}`);
             container.parentElement.querySelector('.batch-sc-chair-id').value = member.id;
-            container.innerHTML = `<div class="tag">${member.name} <span class="font-normal opacity-75">(${member.division})</span><span class="tag-remove" onclick="event.stopPropagation(); setupBatchChairInput(${counter});">×</span></div>`;
+            container.innerHTML = `<div class="tag" data-id="${member.id}">${member.name} <span class="font-normal opacity-75">(${member.division})</span><span class="tag-remove" onclick="event.stopPropagation(); setupBatchChairInput(${counter});">×</span></div>`;
             document.getElementById(`batch-chair-dropdown-${counter}`).classList.add('hidden');
             populateBatchMembersDropdown(counter, '');
         }
 
         async function populateBatchMembersDropdown(counter, searchTerm = '') {
-            const unavailableIds = await getUnavailableMemberIds(counter);
-            const form = document.getElementById(`batch-form-${counter}`);
-            const chairId = form.querySelector('.batch-sc-chair-id').value;
+            const unavailableIds = await getUnavailableMemberIds({ eventId: currentEventId });
             const dropdown = document.getElementById(`batch-members-dropdown-${counter}`);
             const filteredMembers = localMembersCache.filter(m => 
-                m.id != chairId &&
                 !unavailableIds.includes(m.id) &&
                 m.name.toLowerCase().includes(searchTerm.toLowerCase())
             );
             dropdown.innerHTML = filteredMembers.map(member => 
                 `<div class="px-4 py-2 hover:bg-gray-100 cursor-pointer" onclick="selectBatchMember('${member.id}', ${counter})">${member.name} <span class="text-gray-400 text-xs">(${member.division})</span></div>`
-            ).join('');
+            ).join('') || `<div class="px-4 py-2 text-gray-500">Tidak ada anggota tersedia</div>`;
             dropdown.classList.remove('hidden');
         }
 
@@ -1379,13 +1469,13 @@
             showNotification(`${newSubcommittees.length} bidang baru berhasil dibuat!`, "success");
         }
 
-        function addSubcommitteeTaskRow() {
+        function addSubcommitteeTaskRow(name = '', deadline = '') {
             const container = document.getElementById('subcommitteeTasksContainer');
             const taskRow = document.createElement('div');
             taskRow.className = 'flex items-center space-x-2 task-row-for-subcommittee';
             taskRow.innerHTML = `
-                <input type="text" class="task-name-input flex-grow border border-gray-300 rounded-lg px-3 py-2" placeholder="Nama Tugas" required>
-                <input type="date" class="task-deadline-input border border-gray-300 rounded-lg px-3 py-2" required>
+                <input type="text" class="task-name-input flex-grow border border-gray-300 rounded-lg px-3 py-2" placeholder="Nama Tugas" value="${name}" required>
+                <input type="date" class="task-deadline-input border border-gray-300 rounded-lg px-3 py-2" value="${deadline}" required>
                 <button type="button" onclick="this.parentElement.remove()" class="bg-red-100 text-red-600 p-2 rounded-lg hover:bg-red-200">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                 </button>
@@ -1447,12 +1537,25 @@
             container.innerHTML = (!event.subcommittees || event.subcommittees.length === 0) ? `<div class="text-center text-gray-500 p-4">Belum ada bidang yang dibuat.</div>` : 
                 (event.subcommittees || []).map(sc => {
                     const tasksHtml = (!sc.tasks || sc.tasks.length === 0) ? '<p class="text-gray-500 text-sm p-3">Belum ada tugas.</p>' : sc.tasks.map(task => {
+                        let taskActions = '';
+                        if (task.status === 'in-progress') {
+                            taskActions = `
+                                <div class="flex-shrink-0 flex gap-2">
+                                    <button onclick="openEditTaskModal('${sc.id}', '${task.id}')" class="text-xs text-blue-600 hover:underline">Edit</button>
+                                    <button onclick="deleteTask('${sc.id}', '${task.id}')" class="text-xs text-red-600 hover:underline">Hapus</button>
+                                </div>`;
+                        }
+                        
                         let taskHtml;
                         switch(task.status) {
                             case 'completed':
                                 taskHtml = `<div class="border rounded-lg p-3 bg-green-50">
-                                                <p class="font-medium line-through text-gray-500">${task.name}</p>
-                                                <p class="text-sm text-green-600 mt-1">✓ Selesai pada ${formatDate(task.completedDate)}</p>
+                                                <div class="flex justify-between items-start">
+                                                    <div>
+                                                        <p class="font-medium line-through text-gray-500">${task.name}</p>
+                                                        <p class="text-sm text-green-600 mt-1">✓ Selesai pada ${formatDate(task.completedDate)}</p>
+                                                    </div>
+                                                </div>
                                                 <button onclick="openProofDetailModal('${event.id}', '${sc.id}', '${task.id}')" class="mt-2 text-sm text-sky-600 hover:underline font-medium">Lihat Bukti</button>
                                             </div>`;
                                 break;
@@ -1469,8 +1572,13 @@
                                 break;
                             default:
                                 taskHtml = `<div class="border rounded-lg p-3 bg-white">
-                                                <p class="font-medium">${task.name}</p>
-                                                <p class="text-sm text-red-500 countdown" data-deadline="${task.deadline}"></p>
+                                                <div class="flex justify-between items-start">
+                                                    <div>
+                                                        <p class="font-medium">${task.name}</p>
+                                                        <p class="text-sm text-red-500 countdown" data-deadline="${task.deadline}"></p>
+                                                    </div>
+                                                    ${taskActions}
+                                                </div>
                                             </div>`;
                                 break;
                         }
@@ -1478,8 +1586,16 @@
                     }).join('');
                     const chair = localMembersCache.find(m => m.id === sc.chairId);
                     return `<div class="border rounded-xl p-4 bg-sky-50/50 mb-4">
-                                <h4 class="font-bold text-gray-800 mb-2 text-lg">${sc.name}</h4>
-                                <p class="text-sm text-gray-600 mb-3">Ketua: <span class="font-medium">${chair?.name} (${chair?.division})</span></p>
+                                <div class="flex justify-between items-center mb-3">
+                                    <div>
+                                        <h4 class="font-bold text-gray-800 text-lg">${sc.name}</h4>
+                                        <p class="text-sm text-gray-600">Ketua: <span class="font-medium">${chair?.name} (${chair?.division})</span></p>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <button onclick="openEditSubcommitteeModal('${sc.id}')" class="text-sm bg-blue-100 text-blue-800 px-3 py-1.5 rounded-md hover:bg-blue-200 font-semibold">Edit</button>
+                                        <button onclick="deleteSubcommittee('${sc.id}')" class="text-sm bg-red-100 text-red-800 px-3 py-1.5 rounded-md hover:bg-red-200 font-semibold">Hapus</button>
+                                    </div>
+                                </div>
                                 <div class="space-y-3">${tasksHtml}</div>
                             </div>`;
                 }).join("");
@@ -1542,7 +1658,122 @@
             }).join('');
             updateAllCountdowns();
         }
+        
+        // --- NEW EDIT/DELETE FUNCTIONS ---
+        async function openEditSubcommitteeModal(subcommitteeId) {
+            // This function will require a significant rewrite of the dropdown logic for editing context.
+            // For now, let's just open the modal with basic data.
+            const eventDoc = await db.collection("events").doc(currentEventId).get();
+            const eventData = eventDoc.data();
+            const sc = eventData.subcommittees.find(s => s.id === subcommitteeId);
+            if (!sc) return;
 
+            document.getElementById('editSubcommitteeId').value = sc.id;
+            document.getElementById('editSubcommitteeName').value = sc.name;
+
+            // Placeholder for chair and members - this needs the complex dropdown logic
+            const chairContainer = document.getElementById('editSubcommitteeChairContainer');
+            const membersContainer = document.getElementById('editSubcommitteeMembersContainer');
+            const getMemberName = (id) => localMembersCache.find(m => m.id === id)?.name || 'N/A';
+            const getMemberDivision = (id) => localMembersCache.find(m => m.id === id)?.division || 'N/A';
+
+            chairContainer.innerHTML = `<div class="tag" data-id="${sc.chairId}">${getMemberName(sc.chairId)} <span class="font-normal opacity-75">(${getMemberDivision(sc.chairId)})</span></div>`;
+            membersContainer.innerHTML = sc.memberIds.map(id => `<div class="tag" data-id="${id}">${getMemberName(id)} <span class="font-normal opacity-75">(${getMemberDivision(id)})</span></div>`).join('');
+
+
+            document.getElementById('editSubcommitteeModal').classList.add('flex');
+            document.getElementById('editSubcommitteeModal').classList.remove('hidden');
+        }
+
+        function closeEditSubcommitteeModal() {
+            document.getElementById('editSubcommitteeModal').classList.add('hidden');
+            document.getElementById('editSubcommitteeModal').classList.remove('flex');
+        }
+
+        async function handleEditSubcommitteeSubmit(e) {
+            e.preventDefault();
+            // This is a simplified version. A full version would read tags from the UI.
+            showNotification("Fungsi edit belum diimplementasikan sepenuhnya.", "warning");
+        }
+
+        async function openEditTaskModal(subcommitteeId, taskId) {
+            const eventDoc = await db.collection("events").doc(currentEventId).get();
+            const eventData = eventDoc.data();
+            const sc = eventData.subcommittees.find(s => s.id === subcommitteeId);
+            const task = sc.tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            document.getElementById('editTaskSubcommitteeId').value = subcommitteeId;
+            document.getElementById('editTaskId').value = taskId;
+            document.getElementById('editTaskName').value = task.name;
+            document.getElementById('editTaskDeadline').value = task.deadline;
+
+            document.getElementById('editTaskModal').classList.add('flex');
+            document.getElementById('editTaskModal').classList.remove('hidden');
+        }
+
+        function closeEditTaskModal() {
+            document.getElementById('editTaskModal').classList.add('hidden');
+            document.getElementById('editTaskModal').classList.remove('flex');
+        }
+
+        async function handleEditTaskSubmit(e) {
+            e.preventDefault();
+            const subcommitteeId = document.getElementById('editTaskSubcommitteeId').value;
+            const taskId = document.getElementById('editTaskId').value;
+            const newName = document.getElementById('editTaskName').value;
+            const newDeadline = document.getElementById('editTaskDeadline').value;
+
+            const eventRef = db.collection("events").doc(currentEventId);
+            const eventDoc = await eventRef.get();
+            const eventData = eventDoc.data();
+
+            const subcommittees = eventData.subcommittees.map(sc => {
+                if (sc.id === subcommitteeId) {
+                    sc.tasks = sc.tasks.map(t => {
+                        if (t.id === taskId) {
+                            return { ...t, name: newName, deadline: newDeadline };
+                        }
+                        return t;
+                    });
+                }
+                return sc;
+            });
+
+            await eventRef.update({ subcommittees });
+            showNotification("Tugas berhasil diperbarui.", "success");
+            closeEditTaskModal();
+        }
+        
+        function deleteSubcommittee(subcommitteeId) {
+            showConfirmModal('Hapus Bidang', 'Apakah Anda yakin ingin menghapus bidang ini beserta semua tugas di dalamnya?', async () => {
+                const eventRef = db.collection("events").doc(currentEventId);
+                const eventDoc = await eventRef.get();
+                const eventData = eventDoc.data();
+                const updatedSubcommittees = eventData.subcommittees.filter(sc => sc.id !== subcommitteeId);
+                await eventRef.update({ subcommittees: updatedSubcommittees });
+                showNotification("Bidang berhasil dihapus.", "success");
+            });
+        }
+
+        function deleteTask(subcommitteeId, taskId) {
+            showConfirmModal('Hapus Tugas', 'Apakah Anda yakin ingin menghapus tugas ini?', async () => {
+                const eventRef = db.collection("events").doc(currentEventId);
+                const eventDoc = await eventRef.get();
+                const eventData = eventDoc.data();
+                const subcommittees = eventData.subcommittees.map(sc => {
+                    if (sc.id === subcommitteeId) {
+                        sc.tasks = sc.tasks.filter(t => t.id !== taskId);
+                    }
+                    return sc;
+                });
+                await eventRef.update({ subcommittees });
+                showNotification("Tugas berhasil dihapus.", "success");
+            });
+        }
+
+
+        // --- UTILITY FUNCTIONS ---
         function showNotification(text, type = "success") {
             const el = document.getElementById("notificationContent");
             const iconEl = document.getElementById("notificationIcon");
